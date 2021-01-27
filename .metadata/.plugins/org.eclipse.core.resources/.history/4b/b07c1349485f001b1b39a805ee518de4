@@ -1,0 +1,43 @@
+import java.util.Arrays;
+import org.apache.spark.SparkConf;
+import org.apache.spark.streaming.Durations;
+import org.apache.spark.streaming.api.java.JavaDStream;
+import org.apache.spark.streaming.api.java.JavaStreamingContext;
+import scala.Tuple2;
+import java.lang.reflect.Field;
+import java.util.Comparator;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+public class SparkStreaming {
+    private static Logger log = Logger.getLogger(SparkStreaming.class.getName());
+
+    public static void setLevel(Level targetLevel) {
+        Logger root = Logger.getLogger("");
+        root.setLevel(targetLevel);
+        for (Handler handler : root.getHandlers()) {
+            handler.setLevel(targetLevel);
+        }
+        System.out.println("level set: " + targetLevel.getName());
+    }
+    public static void main(String[] args) throws InterruptedException {
+    	setLevel(Level.OFF);
+        String[] jars = {System.getenv("JARS")};
+        SparkConf conf = new SparkConf()
+                .setAppName("SparkStreaming")
+                .setMaster("local[*]")
+                .setSparkHome(System.getenv("SPARK_Home"))
+                .setJars(jars);
+        JavaStreamingContext jssc = new JavaStreamingContext(conf,Durations.seconds(3));
+        JavaDStream<String> stream = jssc.receiverStream(new MyReceiver("cars.csv"));
+        stream.flatMap(s-> Arrays.asList(s.split(",")).iterator())
+                .mapToPair(word->new Tuple2<>(word, 1))
+                .reduceByKey((v1, v2) -> v1 + v2)
+                .print();
+        jssc.start();
+        jssc.awaitTermination();
+    }
+
+}

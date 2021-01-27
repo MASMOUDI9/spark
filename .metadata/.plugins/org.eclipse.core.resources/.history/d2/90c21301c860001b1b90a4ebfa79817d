@@ -1,0 +1,46 @@
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import static java.lang.Thread.sleep;
+import org.apache.spark.storage.StorageLevel;
+import org.apache.spark.streaming.receiver.Receiver;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+/**
+ *
+ * @author Amine Masmoudi
+ */
+class MyReceiver extends Receiver<String> {
+private String directory;
+
+    public MyReceiver(String directory){
+    super(StorageLevel.MEMORY_AND_DISK_2());
+    this.directory=directory;
+}
+
+    @Override
+    public void onStart() {
+        new Thread(this::receive).start();
+    }
+    @Override
+    public void onStop() {
+        // Cleanup stuff (stop threads, close sockets, etc.) to stop receiving data.
+    }
+    private void receive(){
+        try{
+        BufferedReader br = new BufferedReader(new FileReader(directory));
+        String line;
+        while((line = br.readLine()) != null){
+            store(line);
+            try {
+                TimeUnit.SECONDS.sleep(1);
+            } catch (InterruptedException ex) {
+                Logger.getLogger(MyReceiver.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        br.close();
+        }catch(IOException e){System.out.println("where is the file?");}
+    }
+}
